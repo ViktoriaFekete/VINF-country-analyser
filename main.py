@@ -392,8 +392,9 @@ def main():
     # df = pyspark.read.format("com.databricks.spark.xml").option("rowTag", "page").xml(".xml")
     # print(df)
 
+    filtered_countries = {}
     all_countries = {}
-    filtered_files = dict(itertools.islice(files.items(), 0, 40))
+    filtered_files = dict(itertools.islice(files.items(), 0, 210))
 
     dict_terms_posting_list = {}
     for idx, _file in filtered_files.items():
@@ -401,21 +402,23 @@ def main():
         # infobox = get_infobox_from_file(_file)
         # country_dict = get_specific_data_from_infobox(_file)
         country_dict = get_specific_data_from_article(_file)
-        print(idx, country_dict)
+        #print(idx, country_dict)
 
-        # all_countries[idx] = country_dict
+        non_number_fields = ['name', 'capital', 'currency']
+        filtered_countries = {x:country_dict[x] for x in non_number_fields if x in country_dict}
+        all_countries[idx] = country_dict
 
-    #     for k,v in country_dict.items():
-    #         values = tokenize(v)
-    #         values = stem_tokens(values)
-    #         values = remove_stopwords(values)
-    #         for value in sorted(values):
-    #             dict_terms_posting_list.setdefault(value, []).append(int(idx))
-    #
-    # dict_terms_posting_list = dict(sorted(dict_terms_posting_list.items()))
-    # print("\n\nterms_posting_lists>>>>>", dict_terms_posting_list)
+        for k,v in filtered_countries.items():
+            values = tokenize(v)
+            values = stem_tokens(values)
+            values = remove_stopwords(values)
+            for value in sorted(values):
+                dict_terms_posting_list.setdefault(value, []).append(int(idx))
 
-    # search_by_query(dict_terms_posting_list, all_countries)
+    dict_terms_posting_list = dict(sorted(dict_terms_posting_list.items()))
+    print("\n\nterms_posting_lists>>>>>", dict_terms_posting_list)
+
+    search_by_query(dict_terms_posting_list, all_countries)
 
 
 main()
