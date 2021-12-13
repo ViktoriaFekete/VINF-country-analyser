@@ -93,7 +93,7 @@ def clean_lang_arr(lang_arr):
 def str_to_num(text):
     text = text.replace('$','')
     text = text.replace('nowrap','')
-    num = re.findall('[0-9]+\.?[0-9]*', text)  
+    num = re.findall('[0-9]+\.?[0-9]*', text)
     if len(num) > 0:
         if str(num[0]) == text:
             return float(num[0])
