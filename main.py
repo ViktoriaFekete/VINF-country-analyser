@@ -1,8 +1,10 @@
 import re
+import xml.etree.ElementTree as ET
 import HTMLParser
 import pyspark
 from pyspark.sql.session import SparkSession
 from pyspark.context import SparkContext
+from pyspark.conf import SparkConf
 from pyspark.sql.functions import col
 
 
@@ -25,7 +27,9 @@ def remove_strings(text):
     text = text.replace('Increase','')
     text = text.replace('Decrease','')
     text = text.replace('decrease','')
+    text = text.replace('hidden','')
     text = text.replace('|', ' ')
+    text = re.sub('[a-zA-Z]* ?list', '', text)
     text = text.strip()
     return text
 
@@ -73,7 +77,7 @@ def clean_lang_arr(lang_arr):
     for lang in lang_arr:
         encoded_lang_arr.append(lang.encode('utf-8'))
 
-    exceptions = ['Official','Two','The','These','Minority','National']
+    exceptions = ['Official','Two','The','These','Minority','National','Other','Common','If', 'Regional','Native','Spoken', 'Endangered','First','Last','Second','What','Local','Recognised','Known']
 
     for ex in exceptions:
         ex_lang = ex + ' language'
@@ -84,6 +88,23 @@ def clean_lang_arr(lang_arr):
             encoded_lang_arr.remove(ex_langs)
 
     return encoded_lang_arr
+
+
+def str_to_num(text):
+    text = text.replace('$','')
+    text = text.replace('nowrap','')
+    num = re.findall('[0-9]+\.?[0-9]*', text)  
+    if len(num) > 0:
+        if str(num[0]) == text:
+            return float(num[0])
+        elif 'billion' in text:
+            return float(num[0]) * 1000000000
+        elif 'million' in text:
+            return float(num[0]) * 1000000
+        elif 'trillion' in text:
+            return float(num[0]) * 1000000000000
+    else:
+        return 0
 
 
 def get_specific_data_from_article(text):
@@ -115,17 +136,26 @@ def get_specific_data_from_article(text):
     if re.findall(population_est_regex, line):
         matching_string = re.findall(population_est_regex, line)
         country_dict['population'] = clean_text(matching_string)
+        country_dict['population'] = str_to_num(country_dict['population'])
     elif re.findall(population_census_regex, line):
         matching_string = re.findall(population_census_regex, line)
         country_dict['population'] = clean_text(matching_string)
+        country_dict['population'] = country_dict['population'].replace(',','')
+        country_dict['population'] = str_to_num(country_dict['population'])
+
 
     if re.findall(area_regex, line):
         matching_string = re.findall(area_regex, line)
+        matching_string = list(set(matching_string))
         country_dict['area'] = clean_text(matching_string)
+        country_dict['area'] = country_dict['area'].replace(',','')
+        country_dict['area'] = str_to_num(country_dict['area'])
 
     if re.findall(GDP_regex, line):
         matching_string = re.findall(GDP_regex, line)
         country_dict['gdp'] = clean_text(matching_string)
+        country_dict['gdp'] = country_dict['gdp'].replace(',','')
+        country_dict['gdp'] = str_to_num(country_dict['gdp'])
 
     # if re.findall(religion_regex, line):
     #     country_dict['religion'] = re.findall(religion_regex, line)
@@ -151,7 +181,10 @@ def get_specific_data_from_article(text):
 
 
 def filter_countries(title, text):
-    if "history" not in title.lower() and "demographics" not in title.lower() and "geography" not in title.lower():
+    if "history" not in title.lower() and "demographics" not in title.lower() and "geography" not in title.lower() \
+     and "government" not in title.lower() and "template" not in title.lower()  and "list" not in title.lower()\
+         and "abbey" not in title.lower() and "special" not in title.lower() and "university" not in title.lower():
+
         if re.findall('Infobox country', text):
             return title, text
         else:
@@ -180,11 +213,11 @@ def main():
         .map(lambda row: (row[0], get_specific_data_from_article(row[1])))\
         .groupByKey()\
         .mapValues(list)\
-        .saveAsTextFile('rdd_selected_wiki')
+        .saveAsTextFile('rdd_edited_wiki')
 
     # print("\n ------------------ DF SELECTED ----------------->>\n")
-    # for country in rdd_selected:
-    #     print(country, '\n')
+    for country in rdd_selected:
+        print(country, '\n')
     # print("\n <<---------------- DF SELECTED -----------------\n")
 
 
