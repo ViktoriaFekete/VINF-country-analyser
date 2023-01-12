@@ -1,4 +1,4 @@
-# VINF-country-analyser
+# country-analyser
 
 This repository contains an school project related to information retrieval that focuses on the processing of huge amount of textual data.
 
